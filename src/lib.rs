@@ -1,11 +1,20 @@
+#[macro_use]
+extern crate diesel;
 extern crate env_logger;
 extern crate futures;
 extern crate hyper;
 #[macro_use]
 extern crate log;
 #[macro_use]
+extern crate serde_derive;
+#[macro_use]
 extern crate serde_json;
 extern crate url;
+
+mod schema;
+mod models;
+mod db;
+mod messages;
 
 use hyper::{Chunk, StatusCode};
 use hyper::Method::{Get, Post};
@@ -16,6 +25,8 @@ use futures::future::{Future, FutureResult};
 use std::collections::HashMap;
 use std::io;
 use std::error::Error;
+use models::{Message, NewMessage};
+use messages::TimeRange;
 
 pub struct Microservice;
 
@@ -32,7 +43,7 @@ impl Service for Microservice {
                     .body()
                     .concat2() // `concat` is deprecated
                     .and_then(parse_form)
-                    .and_then(write_to_db)
+                    .and_then(db::write_message)
                     .then(make_post_response);
                 Box::new(future)
             }
@@ -45,7 +56,7 @@ impl Service for Microservice {
                     }),
                 };
                 let res = match time_range {
-                    Ok(time_range) => make_get_response(query_db(time_range)),
+                    Ok(time_range) => make_get_response(db::query_messages(time_range)),
                     Err(error) => make_error_response(&error),
                 };
                 Box::new(res)
@@ -56,18 +67,6 @@ impl Service for Microservice {
         }
     }
 }
-
-struct NewMessage {
-    username: String,
-    message: String,
-}
-
-struct TimeRange {
-    before: Option<i64>,
-    after: Option<i64>,
-}
-
-struct Message {}
 
 fn parse_form(form_chunk: Chunk) -> FutureResult<NewMessage, hyper::Error> {
     let mut form = url::form_urlencoded::parse(form_chunk.as_ref())
@@ -150,14 +149,6 @@ fn parse_query(query: &str) -> Result<TimeRange, String> {
         before: before.map(|b| b.unwrap()),
         after: after.map(|a| a.unwrap()),
     })
-}
-
-fn write_to_db(_entry: NewMessage) -> FutureResult<i64, hyper::Error> {
-    future::ok(0) // TODO
-}
-
-fn query_db(_time_range: TimeRange) -> Option<Vec<Message>> {
-    unimplemented!()
 }
 
 fn render_page(_messages: Vec<Message>) -> String {
