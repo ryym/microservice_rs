@@ -37,13 +37,23 @@ impl Service for Microservice {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, request: Request) -> Self::Future {
+        // Establish DB connection for each request.
+        let db_conn = match db::connect() {
+            Some(conn) => conn,
+            None => {
+                return Box::new(future::ok(
+                    Response::new().with_status(StatusCode::InternalServerError),
+                ))
+            }
+        };
+
         match (request.method(), request.path()) {
             (&Post, "/") => {
                 let future = request
                     .body()
                     .concat2() // `concat` is deprecated
                     .and_then(parse_form)
-                    .and_then(db::write_message)
+                    .and_then(move |msg| db::write_message(msg, &db_conn))
                     .then(make_post_response);
                 Box::new(future)
             }
