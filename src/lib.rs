@@ -66,7 +66,7 @@ impl Service for Microservice {
                     }),
                 };
                 let res = match time_range {
-                    Ok(time_range) => make_get_response(db::query_messages(time_range)),
+                    Ok(time_range) => make_get_response(db::query_messages(time_range, &db_conn)),
                     Err(error) => make_error_response(&error),
                 };
                 Box::new(res)
@@ -161,6 +161,6 @@ fn parse_query(query: &str) -> Result<TimeRange, String> {
     })
 }
 
-fn render_page(_messages: Vec<Message>) -> String {
-    unimplemented!()
+fn render_page(messages: Vec<Message>) -> String {
+    format!("{:?}", messages)
 }

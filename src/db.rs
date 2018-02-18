@@ -45,6 +45,37 @@ pub fn write_message(
     }
 }
 
-pub fn query_messages(_time_range: TimeRange) -> Option<Vec<Message>> {
-    unimplemented!()
+pub fn query_messages(time_range: TimeRange, db_conn: &PgConnection) -> Option<Vec<Message>> {
+    use schema::messages;
+    let TimeRange { before, after } = time_range;
+
+    // Diesel does not currently provide an easy way to gradually
+    // build up a uery.
+    let result = match (before, after) {
+        (Some(before), Some(after)) => {
+            messages::table
+                .filter(messages::timestamp.lt(before))
+                .filter(messages::timestamp.gt(after))
+                .load(db_conn)
+        },
+        (Some(before), _) => {
+            messages::table
+                .filter(messages::timestamp.lt(before))
+                .load(db_conn)
+        },
+        (_, Some(after)) => {
+            messages::table
+                .filter(messages::timestamp.gt(after))
+                .load(db_conn)
+        }
+        _ => messages::table.load(db_conn)
+    };
+
+    match result {
+        Ok(result) => Some(result),
+        Err(err) => {
+            error!("Error querying DB: {}", err);
+            None
+        }
+    }
 }
