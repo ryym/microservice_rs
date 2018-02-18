@@ -52,23 +52,17 @@ pub fn query_messages(time_range: TimeRange, db_conn: &PgConnection) -> Option<V
     // Diesel does not currently provide an easy way to gradually
     // build up a uery.
     let result = match (before, after) {
-        (Some(before), Some(after)) => {
-            messages::table
-                .filter(messages::timestamp.lt(before))
-                .filter(messages::timestamp.gt(after))
-                .load(db_conn)
-        },
-        (Some(before), _) => {
-            messages::table
-                .filter(messages::timestamp.lt(before))
-                .load(db_conn)
-        },
-        (_, Some(after)) => {
-            messages::table
-                .filter(messages::timestamp.gt(after))
-                .load(db_conn)
-        }
-        _ => messages::table.load(db_conn)
+        (Some(before), Some(after)) => messages::table
+            .filter(messages::timestamp.lt(before))
+            .filter(messages::timestamp.gt(after))
+            .load(db_conn),
+        (Some(before), _) => messages::table
+            .filter(messages::timestamp.lt(before))
+            .load(db_conn),
+        (_, Some(after)) => messages::table
+            .filter(messages::timestamp.gt(after))
+            .load(db_conn),
+        _ => messages::table.load(db_conn),
     };
 
     match result {

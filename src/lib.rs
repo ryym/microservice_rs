@@ -1,3 +1,5 @@
+#![feature(proc_macro)] // For maud
+
 #[macro_use]
 extern crate diesel;
 extern crate env_logger;
@@ -10,6 +12,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate url;
+extern crate maud;
 
 mod schema;
 mod models;
@@ -27,6 +30,10 @@ use std::io;
 use std::error::Error;
 use models::{Message, NewMessage};
 use messages::TimeRange;
+
+// We need to import this macro explicitly because
+// it uses nightly feature called 'proc_macro'.
+use maud::html;
 
 pub struct Microservice;
 
@@ -162,5 +169,19 @@ fn parse_query(query: &str) -> Result<TimeRange, String> {
 }
 
 fn render_page(messages: Vec<Message>) -> String {
-    format!("{:?}", messages)
+    (html! {
+        head {
+            title "microservice"
+            style "body { font-family: monospace }"
+        }
+        body {
+            ul {
+                @for msg in &messages {
+                    li {
+                        (msg.username) "(" (msg.timestamp) "):" (msg.message)
+                    }
+                }
+            }
+        }
+    }).into_string()
 }
